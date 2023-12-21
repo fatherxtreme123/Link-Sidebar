@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Link Sidebar
-// @version      0.9
+// @version      0.6
 // @description  A Tampermonkey script that creates a sidebar for storing links with search functionality
 // @match        *://*/*
 // @grant        GM_addStyle
