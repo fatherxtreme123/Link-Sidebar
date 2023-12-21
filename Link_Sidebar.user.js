@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Link Sidebar
-// @version      0.7
+// @version      0.8
 // @description  A Tampermonkey script that creates a sidebar for storing links with search functionality
 // @match        *://*/*
 // @grant        GM_addStyle
@@ -85,7 +85,7 @@ function updateSidebar() {
 
   for (let i = 0; i < linkList.length; i++) {
     let link = linkList[i];
-    let truncatedName = link.name.length > 5 ? link.name.substring(0, 5) + '...' : link.name;
+    let truncatedName = link.name.length > 3 ? link.name.substring(0, 3) + '...' : link.name;
 
     // Added search functionality
     if (
@@ -205,23 +205,34 @@ function updateSidebar() {
   });
 }
 
-let sidebar = createElement('div', {}, {
-  position: 'fixed',
-  top: '0',
-  left: '-' + SIDEBAR_WIDTH + 'px',
-  width: SIDEBAR_WIDTH + 'px',
-  height: '100%',
-  overflowY: 'auto',
-  backgroundColor: SIDEBAR_BACKGROUND_COLOR,
-  fontFamily: 'Arial, sans-serif',
-  color: SIDEBAR_TEXT_COLOR,
-  zIndex: '9999',
-  transition: 'left 0.3s ease-in-out'
-});
+// Create iframe for sidebar
+let iframe = document.createElement('iframe');
+iframe.style.width = SIDEBAR_WIDTH + 'px';
+iframe.style.height = '100%';
+iframe.style.position = 'fixed';
+iframe.style.top = '0';
+iframe.style.left = '-' + SIDEBAR_WIDTH + 'px';
+iframe.style.backgroundColor = SIDEBAR_BACKGROUND_COLOR;
+iframe.style.zIndex = '9999';
+iframe.style.transition = 'left 0.3s ease-in-out';
+document.body.appendChild(iframe);
+
+// Append HTML content to iframe
+iframe.contentDocument.body.innerHTML = `
+  <style>
+    /* Add your styles here */
+  </style>
+  <div id="sidebar">
+    <!-- Sidebar content goes here -->
+  </div>
+`;
+
+// Access sidebar content in iframe
+let iframeSidebar = iframe.contentDocument.getElementById('sidebar');
 
 let sidebarHeader = createElement('div', {}, {
   display: 'flex',
-  flexDirection: 'column', // Adjusted flex direction
+  flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'space-between',
   margin: '5px',
@@ -237,7 +248,7 @@ let sidebarTitle = createElement('h3', {}, {
 sidebarTitle.textContent = 'Link Sidebar';
 
 let sidebarToggle = createElement('button', {}, {
-  margin: '5px 0', // Adjusted margin
+  margin: '5px 0',
   padding: '0 5px',
   border: 'none',
   borderRadius: '5px',
@@ -247,7 +258,15 @@ let sidebarToggle = createElement('button', {}, {
 });
 sidebarToggle.textContent = SIDEBAR_TOGGLE;
 sidebarToggle.addEventListener('click', function () {
-  sidebar.style.left = sidebar.style.left === '0px' ? '-' + SIDEBAR_WIDTH + 'px' : '0px';
+  if (iframe.style.left === '0px') {
+    document.body.style.transition = 'margin-left 0.3s ease-in-out';
+    document.body.style.marginLeft = SIDEBAR_WIDTH + 'px';
+  } else {
+    document.body.style.transition = 'margin-left 0.3s ease-in-out';
+    document.body.style.marginLeft = '0';
+  }
+
+  iframe.style.left = iframe.style.left === '0px' ? '-' + SIDEBAR_WIDTH + 'px' : '0px';
 });
 
 let sidebarAdd = createElement('button', {}, {
@@ -264,6 +283,13 @@ sidebarAdd.addEventListener('click', async function () {
   let linkUrl = prompt('Enter a link URL');
   if (linkUrl) {
     let linkName = await getWebpageTitle(linkUrl);
+
+    // Check if the linkName is empty or undefined
+    if (!linkName) {
+      // Set a default name for links without a title
+      linkName = 'Untitled Link';
+    }
+
     let linkList = getLinkList();
     let link = {
       url: linkUrl,
@@ -286,23 +312,21 @@ sidebarHeader.appendChild(sidebarTitle);
 sidebarHeader.appendChild(sidebarToggle);
 sidebarHeader.appendChild(sidebarAdd);
 sidebarHeader.appendChild(createElement('hr', {}, {
-  width: '100%', // Added separating line
+  width: '100%',
   margin: '5px 0',
   border: 'none',
   borderTop: '1px solid #ccc',
 }));
 
-sidebarHeader.appendChild(searchInput); // Added search input
+sidebarHeader.appendChild(searchInput);
 
 let sidebarContent = createElement('ul', {}, {
   margin: '0',
   padding: '0'
 });
 
-sidebar.appendChild(sidebarHeader);
-sidebar.appendChild(sidebarContent);
-
-document.body.appendChild(sidebar);
+iframeSidebar.appendChild(sidebarHeader);
+iframeSidebar.appendChild(sidebarContent);
 
 let showSidebarButton = createElement('button', {}, {
   position: 'fixed',
@@ -316,22 +340,33 @@ let showSidebarButton = createElement('button', {}, {
   backgroundColor: '#ccc',
   color: SIDEBAR_TEXT_COLOR,
   cursor: 'pointer',
-  display: sidebar.style.left === '-' + SIDEBAR_WIDTH + 'px' ? 'block' : 'none'
+  display: iframe.style.left === '-' + SIDEBAR_WIDTH + 'px' ? 'block' : 'none'
 });
 
 showSidebarButton.textContent = SIDEBAR_TOGGLE;
 
 showSidebarButton.addEventListener('click', function () {
-  sidebar.style.left = '0px';
+  if (iframe.style.left === '-' + SIDEBAR_WIDTH + 'px') {
+    document.body.style.transition = 'margin-left 0.3s ease-in-out';
+    document.body.style.marginLeft = SIDEBAR_WIDTH + 'px';
+  } else {
+    document.body.style.transition = 'margin-left 0.3s ease-in-out';
+    document.body.style.marginLeft = '0';
+  }
+
+  iframe.style.left = '0px';
   showSidebarButton.style.display = 'none';
 });
 
 document.body.appendChild(showSidebarButton);
 
-sidebar.addEventListener('transitionend', function () {
-  if (sidebar.style.left === '-' + SIDEBAR_WIDTH + 'px') {
+iframe.addEventListener('transitionend', function() {
+  if (iframe.style.left === '-' + SIDEBAR_WIDTH + 'px') {
     showSidebarButton.style.display = 'block';
+    document.body.style.marginLeft = '0px';
+  } else {
+    showSidebarButton.style.display = 'none';
   }
-});
+})
 
 updateSidebar();
