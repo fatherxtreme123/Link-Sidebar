@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Link Sidebar
-// @version      0.6
+// @version      0.7
 // @description  A Tampermonkey script that creates a sidebar for storing links with search functionality
 // @match        *://*/*
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @icon         https://github.com/fatherxtreme123/Link-Sidebar/blob/main/icon.png?raw=true
 // ==/UserScript==
 
 const SIDEBAR_WIDTH = 200;
