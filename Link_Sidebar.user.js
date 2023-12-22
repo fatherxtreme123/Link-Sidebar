@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Link Sidebar
-// @version      0.9
-// @description  A Tampermonkey script that creates a sidebar for storing links with search functionality
+// @version      1.0
+// @description  A Tampermonkey script that creates a sidebar for storing links with search functionality and resizable sidebar
 // @match        *://*/*
 // @grant        GM_addStyle
 // @grant        GM_setValue
@@ -18,6 +18,8 @@ const SIDEBAR_REMOVE = '-';
 const SIDEBAR_EDIT = '✎';
 const SIDEBAR_SEARCH = '🔍'; // Added search icon
 const SIDEBAR_STORAGE = 'link_sidebar';
+
+let sidebarWidth = SIDEBAR_WIDTH;
 
 function createElement(tag, attrs, styles) {
   let element = document.createElement(tag);
@@ -39,22 +41,9 @@ function setLinkList(linkList) {
   GM_setValue(SIDEBAR_STORAGE, linkList);
 }
 
-function moveLinkUp(index) {
-  let linkList = getLinkList();
-  if (index > 0 && index < linkList.length) {
-    [linkList[index], linkList[index - 1]] = [linkList[index - 1], linkList[index]];
-    setLinkList(linkList);
-    updateSidebar();
-  }
-}
-
-function moveLinkDown(index) {
-  let linkList = getLinkList();
-  if (index >= 0 && index < linkList.length - 1) {
-    [linkList[index], linkList[index + 1]] = [linkList[index + 1], linkList[index]];
-    setLinkList(linkList);
-    updateSidebar();
-  }
+function getWebsiteName(url) {
+  let urlObject = new URL(url);
+  return urlObject.host;
 }
 
 async function getWebpageTitle(url) {
@@ -74,7 +63,26 @@ async function getWebpageTitle(url) {
       throw new Error(response.statusText);
     }
   } catch (error) {
-    return error.message;
+    console.error('Failed to fetch page title:', error.message);
+    return getWebsiteName(url);
+  }
+}
+
+function moveLinkUp(index) {
+  let linkList = getLinkList();
+  if (index > 0 && index < linkList.length) {
+    [linkList[index], linkList[index - 1]] = [linkList[index - 1], linkList[index]];
+    setLinkList(linkList);
+    updateSidebar();
+  }
+}
+
+function moveLinkDown(index) {
+  let linkList = getLinkList();
+  if (index >= 0 && index < linkList.length - 1) {
+    [linkList[index], linkList[index + 1]] = [linkList[index + 1], linkList[index]];
+    setLinkList(linkList);
+    updateSidebar();
   }
 }
 
@@ -123,7 +131,8 @@ function updateSidebar() {
 
       let linkElement = createElement('a', {
         href: link.url,
-        target: '_blank'
+        target: '_blank',
+        title: link.name, // Add title attribute here
       }, {
         textDecoration: 'none',
         color: SIDEBAR_TEXT_COLOR,
@@ -131,7 +140,9 @@ function updateSidebar() {
       linkElement.textContent = truncatedName;
       listItem.appendChild(linkElement);
 
-      let removeButton = createElement('button', {}, {
+      let removeButton = createElement('button', {
+        title: 'Remove Link',
+      }, {
         float: 'right',
         margin: '0 5px',
         padding: '0 5px',
@@ -142,14 +153,21 @@ function updateSidebar() {
         cursor: 'pointer'
       });
       removeButton.textContent = SIDEBAR_REMOVE;
+
       removeButton.addEventListener('click', function () {
-        linkList.splice(i, 1);
-        setLinkList(linkList);
-        updateSidebar();
+        let confirmed = window.confirm('Are you sure you want to delete this link?');
+        if (confirmed) {
+          linkList.splice(i, 1);
+          setLinkList(linkList);
+          updateSidebar();
+        }
       });
+
       listItem.appendChild(removeButton);
 
-      let editButton = createElement('button', {}, {
+      let editButton = createElement('button', {
+        title: 'Edit Link',
+      }, {
         float: 'right',
         margin: '0 5px',
         padding: '0 5px',
@@ -170,7 +188,9 @@ function updateSidebar() {
       });
       listItem.appendChild(editButton);
 
-      let upButton = createElement('button', {}, {
+      let upButton = createElement('button', {
+        title: 'Move Link Up',
+      }, {
         float: 'right',
         margin: '0 5px',
         padding: '0 5px',
@@ -186,7 +206,9 @@ function updateSidebar() {
       });
       listItem.appendChild(upButton);
 
-      let downButton = createElement('button', {}, {
+      let downButton = createElement('button', {
+        title: 'Move Link Down',
+      }, {
         float: 'right',
         margin: '0 5px',
         padding: '0 5px',
@@ -202,7 +224,6 @@ function updateSidebar() {
       });
       listItem.appendChild(downButton);
 
-      // Add click event listener to the link
       linkElement.addEventListener('click', createLinkClickHandler(link));
 
       sidebarContent.appendChild(listItem);
@@ -267,7 +288,9 @@ let sidebarTitle = createElement('h3', {}, {
 });
 sidebarTitle.textContent = 'Link Sidebar';
 
-let sidebarToggle = createElement('button', {}, {
+let sidebarToggle = createElement('button', {
+  title: 'Toggle Sidebar',
+}, {
   margin: '5px 0',
   padding: '0 5px',
   border: 'none',
@@ -289,7 +312,9 @@ sidebarToggle.addEventListener('click', function () {
   iframe.style.left = iframe.style.left === '0px' ? '-' + SIDEBAR_WIDTH + 'px' : '0px';
 });
 
-let sidebarAdd = createElement('button', {}, {
+let sidebarAdd = createElement('button', {
+  title: 'Add Link',
+}, {
   margin: '0 5px',
   padding: '0 5px',
   border: 'none',
@@ -302,28 +327,83 @@ sidebarAdd.textContent = SIDEBAR_ADD;
 sidebarAdd.addEventListener('click', async function () {
   let linkUrl = prompt('Enter a link URL');
   if (linkUrl) {
-    let linkName = await getWebpageTitle(linkUrl);
+    let loadingIndicator = createElement('span', {}, {
+      marginLeft: '5px',
+      color: '#ccc'
+    });
+    loadingIndicator.textContent = 'Loading...';
+    sidebarAdd.appendChild(loadingIndicator);
 
-    if (!linkName) {
-      linkName = 'Untitled Link';
+    try {
+      let linkName = await getWebpageTitle(linkUrl);
+
+      if (!linkName) {
+        linkName = 'Untitled Link';
+      }
+
+      let linkList = getLinkList();
+      let link = {
+        url: linkUrl,
+        name: linkName
+      };
+      linkList.push(link);
+      setLinkList(linkList);
+      updateSidebar();
+    } finally {
+      loadingIndicator.remove();
     }
-
-    let linkList = getLinkList();
-    let link = {
-      url: linkUrl,
-      name: linkName
-    };
-    linkList.push(link);
-    setLinkList(linkList);
-    updateSidebar();
   }
 });
 
 let searchInput = createElement('input', {
   type: 'text',
   placeholder: 'Search',
+  title: 'Search Links',
 });
 searchInput.addEventListener('input', updateSidebar);
+
+let resizeHandle = createElement('div', {
+  title: 'Resize Sidebar',
+}, {
+  width: '10px',
+  height: '100%',
+  position: 'absolute',
+  top: '0',
+  right: '0',
+  cursor: 'ew-resize',
+});
+
+resizeHandle.addEventListener('mousedown', function(e) {
+  e.preventDefault();
+
+  let startX = e.pageX;
+
+  function onMouseMove(event) {
+    let delta = event.pageX - startX;
+    sidebarWidth = Math.max(100, SIDEBAR_WIDTH + delta);
+    updateWidth();
+  }
+
+  function onMouseUp(event) {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  }
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+});
+
+function updateWidth() {
+  iframe.style.width = sidebarWidth + 'px';
+  showSidebarButton.style.left = '-' + sidebarWidth + 'px';
+}
+
+let sidebarContent = createElement('ul', {}, {
+  margin: '0',
+  padding: '0'
+});
+
+iframeSidebar.appendChild(resizeHandle);
 
 sidebarHeader.appendChild(sidebarTitle);
 sidebarHeader.appendChild(sidebarToggle);
@@ -337,15 +417,12 @@ sidebarHeader.appendChild(createElement('hr', {}, {
 
 sidebarHeader.appendChild(searchInput);
 
-let sidebarContent = createElement('ul', {}, {
-  margin: '0',
-  padding: '0'
-});
-
 iframeSidebar.appendChild(sidebarHeader);
 iframeSidebar.appendChild(sidebarContent);
 
-let showSidebarButton = createElement('button', {}, {
+let showSidebarButton = createElement('button', {
+  title: 'Toggle Sidebar',
+}, {
   position: 'fixed',
   top: '50%',
   left: '0',
@@ -377,13 +454,13 @@ showSidebarButton.addEventListener('click', function () {
 
 document.body.appendChild(showSidebarButton);
 
-iframe.addEventListener('transitionend', function() {
+iframe.addEventListener('transitionend', function () {
   if (iframe.style.left === '-' + SIDEBAR_WIDTH + 'px') {
     showSidebarButton.style.display = 'block';
     document.body.style.marginLeft = '0px';
   } else {
     showSidebarButton.style.display = 'none';
   }
-})
+});
 
 updateSidebar();
