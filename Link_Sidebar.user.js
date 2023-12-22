@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Link Sidebar
-// @version      0.8
+// @version      0.9
 // @description  A Tampermonkey script that creates a sidebar for storing links with search functionality
 // @match        *://*/*
 // @grant        GM_addStyle
@@ -78,16 +78,36 @@ async function getWebpageTitle(url) {
   }
 }
 
+function closeSidebar() {
+  if (iframe.style.left === '0px') {
+    document.body.style.transition = 'margin-left 0.3s ease-in-out';
+    document.body.style.marginLeft = '0';
+    iframe.style.left = '-' + SIDEBAR_WIDTH + 'px';
+    showSidebarButton.style.display = 'block';
+  }
+}
+
+function openLinkInNewTab(url) {
+  window.open(url, '_blank');
+}
+
+function createLinkClickHandler(link) {
+  return function (event) {
+    event.preventDefault();
+    closeSidebar();
+    openLinkInNewTab(link.url);
+  };
+}
+
 function updateSidebar() {
   sidebarContent.innerHTML = '';
   let linkList = getLinkList();
-  let searchInputValue = searchInput.value.toLowerCase(); // Added search input value
+  let searchInputValue = searchInput.value.toLowerCase();
 
   for (let i = 0; i < linkList.length; i++) {
     let link = linkList[i];
     let truncatedName = link.name.length > 3 ? link.name.substring(0, 3) + '...' : link.name;
 
-    // Added search functionality
     if (
       link.name.toLowerCase().includes(searchInputValue) ||
       link.url.toLowerCase().includes(searchInputValue)
@@ -182,6 +202,9 @@ function updateSidebar() {
       });
       listItem.appendChild(downButton);
 
+      // Add click event listener to the link
+      linkElement.addEventListener('click', createLinkClickHandler(link));
+
       sidebarContent.appendChild(listItem);
     }
   }
@@ -205,7 +228,6 @@ function updateSidebar() {
   });
 }
 
-// Create iframe for sidebar
 let iframe = document.createElement('iframe');
 iframe.style.width = SIDEBAR_WIDTH + 'px';
 iframe.style.height = '100%';
@@ -217,7 +239,6 @@ iframe.style.zIndex = '9999';
 iframe.style.transition = 'left 0.3s ease-in-out';
 document.body.appendChild(iframe);
 
-// Append HTML content to iframe
 iframe.contentDocument.body.innerHTML = `
   <style>
     /* Add your styles here */
@@ -227,7 +248,6 @@ iframe.contentDocument.body.innerHTML = `
   </div>
 `;
 
-// Access sidebar content in iframe
 let iframeSidebar = iframe.contentDocument.getElementById('sidebar');
 
 let sidebarHeader = createElement('div', {}, {
@@ -284,9 +304,7 @@ sidebarAdd.addEventListener('click', async function () {
   if (linkUrl) {
     let linkName = await getWebpageTitle(linkUrl);
 
-    // Check if the linkName is empty or undefined
     if (!linkName) {
-      // Set a default name for links without a title
       linkName = 'Untitled Link';
     }
 
@@ -301,7 +319,6 @@ sidebarAdd.addEventListener('click', async function () {
   }
 });
 
-// Added search functionality
 let searchInput = createElement('input', {
   type: 'text',
   placeholder: 'Search',
