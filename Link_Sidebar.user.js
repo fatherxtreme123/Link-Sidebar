@@ -12,7 +12,7 @@
 const SIDEBAR_WIDTH = 200;
 const SIDEBAR_TEXT_COLOR = '#fff'; // Set to white
 const SIDEBAR_BACKGROUND_COLOR = '#000'; // Set to black
-const SIDEBAR_TOGGLE = '<<';
+const SIDEBAR_TOGGLE = 'Toggle';
 const SIDEBAR_ADD = '+';
 const SIDEBAR_REMOVE = '-';
 const SIDEBAR_EDIT = '✎';
