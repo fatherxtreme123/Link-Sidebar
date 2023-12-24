@@ -463,4 +463,14 @@ iframe.addEventListener('transitionend', function () {
   }
 });
 
+showSidebarButton.style.background = 'rgba(204, 204, 204, 0.5)';
+
+showSidebarButton.addEventListener('mouseenter', () => {
+  showSidebarButton.style.background = 'rgb(204, 204, 204)';
+});
+
+showSidebarButton.addEventListener('mouseleave', () => {
+  showSidebarButton.style.background = 'rgba(204, 204, 204, 0.5)';
+});
+
 updateSidebar();
