@@ -114,7 +114,7 @@ function updateSidebar() {
 
   for (let i = 0; i < linkList.length; i++) {
     let link = linkList[i];
-    let truncatedName = link.name.length > 3 ? link.name.substring(0, 3) + '...' : link.name;
+    let truncatedName = link.name.length > 2 ? link.name.substring(0, 2) + '...' : link.name;
 
     if (
       link.name.toLowerCase().includes(searchInputValue) ||
